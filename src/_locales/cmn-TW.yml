@@ -626,6 +626,19 @@ settings:
     https://cdn.jsdelivr.net/gh/BewlyBewly/Imgs/wallpapers/rocky-mountain-cloudscape.jpg
 
     https://cdn.jsdelivr.net/gh/BewlyBewly/Imgs/wallpapers/green-white-mountains.jpg
+  wallpaper_layout: 圖片佈局
+  wallpaper_layout_opt:
+    cover: 填滿
+    contain: 適應
+    stretch: 拉伸
+    center: 置中
+    tile: 平鋪
+  wallpaper_layout_desc:
+    cover: 保持寬高比縮放以填滿螢幕，可能裁切部分圖片
+    contain: 保持寬高比縮放以完整顯示圖片，留邊顯示背景色
+    stretch: 拉伸圖片以填滿整個螢幕，不保持寬高比
+    center: 保持原始尺寸置中顯示，留邊顯示背景色
+    tile: 從左上角開始以原始尺寸平鋪圖片
   enable_wallpaper_masking: 啟用背景遮蔽效果
   wallpaper_cache_time: 背景圖片快取時間
   wallpaper_cache_time_desc: 設定 URL 背景圖的快取時間(小時)。0表示不快取，每次都重新載入。本地上傳的圖片不受此設定影響。

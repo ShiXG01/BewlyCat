@@ -7,7 +7,7 @@ import { settings } from '~/logic'
 import { isLocalWallpaperUrl, resolveWallpaperUrl } from '~/utils/localWallpaper'
 import { hexToHSL } from '~/utils/main'
 import { cleanupExpiredCache, getOrCacheWallpaper } from '~/utils/wallpaperCache'
-import { getPageWallpaperConfig } from '~/utils/wallpaperConfig'
+import { getPageWallpaperConfig, getWallpaperLayoutStyle } from '~/utils/wallpaperConfig'
 
 const props = defineProps<{ activatedPage: AppPage }>()
 const emit = defineEmits<{ wallpaperReady: [ready: boolean] }>()
@@ -250,6 +250,14 @@ onBeforeUnmount(() => emit('wallpaperReady', false))
 
 const currentWallpaperConfig = computed(() => getPageWallpaperConfig(props.activatedPage, settings.value))
 
+const wallpaperStyle = computed((): CSSProperties => {
+  const layoutStyle = getWallpaperLayoutStyle(currentWallpaperConfig.value.layout)
+  return {
+    backgroundImage: `url('${currentWallpaperUrl.value}')`,
+    ...layoutStyle,
+  }
+})
+
 const currentWallpaperBlurIntensity = computed(() => {
   return currentWallpaperConfig.value.blurIntensity
 })
@@ -336,9 +344,9 @@ setAppWallpaperMaskingOpacity()
       <div v-if="activatedPage === AppPage.Search" key="search">
         <!-- background -->
         <div
-          pos="absolute top-0 left-0" w-full h-full duration-300 bg="cover center $bew-homepage-bg"
+          pos="absolute top-0 left-0" w-full h-full duration-300 bg="$bew-homepage-bg"
           z--1
-          :style="{ backgroundImage: `url('${currentWallpaperUrl}')` }"
+          :style="wallpaperStyle"
         />
         <!-- background mask -->
         <Transition name="fade">
@@ -353,9 +361,9 @@ setAppWallpaperMaskingOpacity()
       <div v-else-if="activatedPage === AppPage.Moments" key="moments">
         <!-- background -->
         <div
-          pos="absolute top-0 left-0" w-full h-full duration-300 bg="cover center $bew-homepage-bg"
+          pos="absolute top-0 left-0" w-full h-full duration-300 bg="$bew-homepage-bg"
           z--1
-          :style="{ backgroundImage: `url('${currentWallpaperUrl}')` }"
+          :style="wallpaperStyle"
         />
         <!-- background mask -->
         <Transition name="fade">
@@ -370,9 +378,9 @@ setAppWallpaperMaskingOpacity()
       <div v-else key="default">
         <!-- background -->
         <div
-          :style="{ backgroundImage: `url('${currentWallpaperUrl}')` }"
-          pos="absolute top-0 left-0" w-full h-full duration-300 bg="cover center $bew-homepage-bg"
+          pos="absolute top-0 left-0" w-full h-full duration-300 bg="$bew-homepage-bg"
           z--1
+          :style="wallpaperStyle"
         />
 
         <!-- background mask -->

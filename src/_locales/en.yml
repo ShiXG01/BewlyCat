@@ -703,6 +703,19 @@ settings:
     https://cdn.jsdelivr.net/gh/BewlyBewly/Imgs/wallpapers/rocky-mountain-cloudscape.jpg
 
     https://cdn.jsdelivr.net/gh/BewlyBewly/Imgs/wallpapers/green-white-mountains.jpg
+  wallpaper_layout: Image layout
+  wallpaper_layout_opt:
+    cover: Cover
+    contain: Contain
+    stretch: Stretch
+    center: Center
+    tile: Tile
+  wallpaper_layout_desc:
+    cover: Scale image to fill screen while preserving aspect ratio, cropping if necessary
+    contain: Scale image to fit within screen while preserving aspect ratio, empty borders show background color
+    stretch: Stretch image to fill screen without preserving aspect ratio
+    center: Display image centered at original size, empty borders show background color
+    tile: Tile image repeatedly from top-left at original size
   enable_wallpaper_masking: Enable wallpaper masking
   wallpaper_cache_time: Wallpaper cache time
   wallpaper_cache_time_desc: Set the cache time (hours) for URL wallpapers. 0 means no caching, reload every time. Locally uploaded images are not affected by this setting.

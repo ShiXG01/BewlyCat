@@ -12,6 +12,7 @@ import {
   normalizeListLayoutBreakpoint,
 } from '~/utils/gridLayout'
 import { normalizePlaybackRateStep } from '~/utils/playbackRate'
+import type { WallpaperLayout } from '~/utils/wallpaperConfig'
 
 export const storageDemo = useStorageLocal('webext-demo', 'Storage Demo')
 
@@ -452,6 +453,7 @@ export interface Settings {
   useLinearGradientThemeColorBackground: boolean
   wallpaperMode: 'buildIn' | 'byUrl'
   wallpaper: string
+  wallpaperLayout: WallpaperLayout
   enableWallpaperMasking: boolean
   wallpaperMaskOpacity: number
   wallpaperBlurIntensity: number
@@ -466,6 +468,7 @@ export interface Settings {
   individuallySetSearchPageWallpaper: boolean
   searchPageWallpaperMode: 'buildIn' | 'byUrl'
   searchPageWallpaper: string
+  searchPageWallpaperLayout: WallpaperLayout
   searchPageEnableWallpaperMasking: boolean
   searchPageWallpaperMaskOpacity: number
   searchPageWallpaperBlurIntensity: number
@@ -474,6 +477,7 @@ export interface Settings {
   individuallySetMomentsPageWallpaper: boolean
   momentsPageWallpaperMode: 'buildIn' | 'byUrl'
   momentsPageWallpaper: string
+  momentsPageWallpaperLayout: WallpaperLayout
   momentsPageEnableWallpaperMasking: boolean
   momentsPageWallpaperMaskOpacity: number
   momentsPageWallpaperBlurIntensity: number
@@ -795,6 +799,7 @@ export const originalSettings: Settings = {
   useLinearGradientThemeColorBackground: false,
   wallpaperMode: 'buildIn',
   wallpaper: '',
+  wallpaperLayout: 'cover',
   enableWallpaperMasking: false,
   wallpaperMaskOpacity: 80,
   wallpaperBlurIntensity: 0,
@@ -809,6 +814,7 @@ export const originalSettings: Settings = {
   individuallySetSearchPageWallpaper: false,
   searchPageWallpaperMode: 'buildIn',
   searchPageWallpaper: '',
+  searchPageWallpaperLayout: 'cover',
   searchPageEnableWallpaperMasking: false,
   searchPageWallpaperMaskOpacity: 80,
   searchPageWallpaperBlurIntensity: 0,
@@ -817,6 +823,7 @@ export const originalSettings: Settings = {
   individuallySetMomentsPageWallpaper: false,
   momentsPageWallpaperMode: 'buildIn',
   momentsPageWallpaper: '',
+  momentsPageWallpaperLayout: 'cover',
   momentsPageEnableWallpaperMasking: false,
   momentsPageWallpaperMaskOpacity: 80,
   momentsPageWallpaperBlurIntensity: 0,

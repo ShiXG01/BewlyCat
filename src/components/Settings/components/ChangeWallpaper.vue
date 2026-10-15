@@ -13,6 +13,8 @@ import {
   storeLocalWallpaper,
 } from '~/utils/localWallpaper'
 import { compressAndResizeImage } from '~/utils/main'
+import type { WallpaperLayout } from '~/utils/wallpaperConfig'
+import { normalizeWallpaperLayout } from '~/utils/wallpaperConfig'
 
 import SettingsItem from './SettingsItem.vue'
 import SettingsItemGroup from './SettingsItemGroup.vue'
@@ -55,6 +57,37 @@ const wallpaperModeOptions = computed<{ label: string, value: WallpaperMode }[]>
   { label: t('settings.wallpaper_mode_opt.build_in'), value: 'buildIn' },
   { label: t('settings.wallpaper_mode_opt.by_url'), value: 'byUrl' },
 ])
+
+const wallpaperLayoutOptions = computed<{ label: string, value: WallpaperLayout }[]>(() => [
+  { label: t('settings.wallpaper_layout_opt.cover'), value: 'cover' },
+  { label: t('settings.wallpaper_layout_opt.contain'), value: 'contain' },
+  { label: t('settings.wallpaper_layout_opt.stretch'), value: 'stretch' },
+  { label: t('settings.wallpaper_layout_opt.center'), value: 'center' },
+  { label: t('settings.wallpaper_layout_opt.tile'), value: 'tile' },
+])
+
+const currentWallpaperLayout = computed<WallpaperLayout>({
+  get: () => {
+    if (isGlobal.value)
+      return normalizeWallpaperLayout(settings.value.wallpaperLayout)
+    if (isSearchPage.value)
+      return normalizeWallpaperLayout(settings.value.searchPageWallpaperLayout)
+    return normalizeWallpaperLayout(settings.value.momentsPageWallpaperLayout)
+  },
+  set: (val: WallpaperLayout) => {
+    const layout = normalizeWallpaperLayout(val)
+    if (isGlobal.value)
+      settings.value.wallpaperLayout = layout
+    else if (isSearchPage.value)
+      settings.value.searchPageWallpaperLayout = layout
+    else
+      settings.value.momentsPageWallpaperLayout = layout
+  },
+})
+
+const currentWallpaperLayoutDesc = computed(() => {
+  return t(`settings.wallpaper_layout_desc.${currentWallpaperLayout.value}`)
+})
 
 const currentLocalUploadedWallpaper = computed(() => {
   return getLocalUploadedWallpaperRef(props.type)
@@ -398,6 +431,18 @@ onMounted(() => {
             </div>
           </div>
         </template>
+      </SettingsItem>
+
+      <SettingsItem :title="$t('settings.wallpaper_layout')" right-width="auto">
+        <template #desc>
+          {{ currentWallpaperLayoutDesc }}
+        </template>
+
+        <Select
+          v-model="currentWallpaperLayout"
+          :options="wallpaperLayoutOptions"
+          w="160px"
+        />
       </SettingsItem>
 
       <SettingsItem :title="$t('settings.enable_wallpaper_masking')" right-width="auto">

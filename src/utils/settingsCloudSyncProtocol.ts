@@ -49,6 +49,7 @@ const BLOCKED_FIELDS = new Set(['__proto__', 'constructor', 'prototype'])
 const LOCAL_ONLY_WALLPAPER_FIELDS = new Set([
   'wallpaperMode',
   'wallpaper',
+  'wallpaperLayout',
   'enableWallpaperMasking',
   'wallpaperMaskOpacity',
   'wallpaperBlurIntensity',
@@ -56,6 +57,7 @@ const LOCAL_ONLY_WALLPAPER_FIELDS = new Set([
   'individuallySetSearchPageWallpaper',
   'searchPageWallpaperMode',
   'searchPageWallpaper',
+  'searchPageWallpaperLayout',
   'searchPageEnableWallpaperMasking',
   'searchPageWallpaperMaskOpacity',
   'searchPageWallpaperBlurIntensity',
@@ -64,6 +66,7 @@ const LOCAL_ONLY_WALLPAPER_FIELDS = new Set([
   'individuallySetMomentsPageWallpaper',
   'momentsPageWallpaperMode',
   'momentsPageWallpaper',
+  'momentsPageWallpaperLayout',
   'momentsPageEnableWallpaperMasking',
   'momentsPageWallpaperMaskOpacity',
   'momentsPageWallpaperBlurIntensity',

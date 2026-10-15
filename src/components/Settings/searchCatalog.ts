@@ -146,6 +146,7 @@ const wallpaperTitleKeys = [
   'settings.wallpaper_cache_time',
   'settings.choose_ur_wallpaper',
   'settings.image_url',
+  'settings.wallpaper_layout',
   'settings.enable_wallpaper_masking',
   'settings.wallpaper_mask_opacity',
   'settings.wallpaper_blur_intensity',
