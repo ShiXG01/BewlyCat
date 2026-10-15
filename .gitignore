@@ -26,3 +26,5 @@ extension-safari-macos/
 .playwright-mcp/
 # 本地计划
 UI-FIX-PLAN.md
+# AgentTeams 本地运行记录
+.agent-teams/

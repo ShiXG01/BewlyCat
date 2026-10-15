@@ -689,6 +689,7 @@ settings:
   search_results_pagination_mode: 搜尋結果分頁模式
   search_results_pagination_mode_desc: 揀搜尋結果顯示方式：捲動自動加載或者翻頁
   individually_set_search_page_wallpaper: 單獨設定搵嘢頁背景
+  individually_set_moments_page_wallpaper: 單獨設定動態頁壁紙
   recommendation_mode: 推介模式
   recommendation_mode_desc: |
     Web：普通網頁版推介模式。無 Cookie：請求首頁推介時唔帶 Cookie。App：手機版推介模式，要先授權 access key。

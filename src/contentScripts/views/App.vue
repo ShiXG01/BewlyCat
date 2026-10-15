@@ -30,6 +30,7 @@ import emitter from '~/utils/mitt'
 import { navigateToPluginSearchResults } from '~/utils/searchNavigation'
 import { applyPendingSettingsMigrations, formatSettingsMigrationConfirmMessage, getPendingSettingsMigrationChoices, hasPendingSettingsMigrations } from '~/utils/settingsMigration'
 import { isComponentVisible } from '~/utils/topBarBadge'
+import { getPageWallpaperConfig } from '~/utils/wallpaperConfig'
 
 import { setupNecessarySettingsWatchers } from './necessarySettingsWatchers'
 
@@ -228,10 +229,8 @@ const activatedPage = ref<AppPage>(getPageParam() || getDefaultAppPage())
 const pageControlWallpaperMask = computed(() => {
   if (!pageWallpaperReady.value)
     return '0%'
-  const separateSearchWallpaper = activatedPage.value === AppPage.Search && settings.value.individuallySetSearchPageWallpaper
-  const enabled = separateSearchWallpaper ? settings.value.searchPageEnableWallpaperMasking : settings.value.enableWallpaperMasking
-  const opacity = separateSearchWallpaper ? settings.value.searchPageWallpaperMaskOpacity : settings.value.wallpaperMaskOpacity
-  return `${enabled && Number.isFinite(opacity) ? Math.min(100, Math.max(0, opacity)) : 0}%`
+  const config = getPageWallpaperConfig(activatedPage.value, settings.value)
+  return `${config.maskEnabled && Number.isFinite(config.maskOpacity) ? Math.min(100, Math.max(0, config.maskOpacity)) : 0}%`
 })
 
 // 清理搜索相关的URL参数（仅在首页生效）

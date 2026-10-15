@@ -7,6 +7,7 @@ import Select from '~/components/Select.vue'
 import { settings } from '~/logic'
 import type { TabsPosition } from '~/logic/storage'
 
+import ChangeWallpaper from '../../components/ChangeWallpaper.vue'
 import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
 import SettingsSegmentedControl from '../../components/SettingsSegmentedControl.vue'
@@ -219,6 +220,8 @@ const momentsTabsPositionOptions = computed<{ label: string, value: TabsPosition
         />
       </SettingsItem>
     </SettingsItemGroup>
+
+    <ChangeWallpaper type="momentsPage" />
 
     <SettingsItemGroup :title="$t('settings.group_original_moments_page')">
       <SettingsItem

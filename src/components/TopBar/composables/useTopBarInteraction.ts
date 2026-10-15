@@ -97,6 +97,12 @@ export function useTopBarInteraction() {
       return !!settings.value.wallpaper
     }
 
+    if (activatedPage.value === AppPage.Moments) {
+      if (settings.value.individuallySetMomentsPageWallpaper)
+        return !!settings.value.momentsPageWallpaper
+      return !!settings.value.wallpaper
+    }
+
     if (activatedPage.value === AppPage.SearchResults)
       return !!settings.value.wallpaper
 

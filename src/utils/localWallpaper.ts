@@ -4,6 +4,8 @@
  */
 
 import { useStorageLocal } from '~/composables/useStorageLocal'
+import type { wallpaperItem } from '~/constants/imgs'
+import { localSettings, settings } from '~/logic'
 
 // 本地壁纸数据接口
 export interface LocalWallpaperData {
@@ -163,4 +165,117 @@ export function extractWallpaperId(url: string): string | null {
     return url.replace('local-wallpaper:', '')
   }
   return null
+}
+
+export type WallpaperPageType = 'global' | 'searchPage' | 'momentsPage'
+
+/**
+ * 获取指定 ID 的本地壁纸元数据
+ */
+export function getLocalWallpaperData(id: string): LocalWallpaperData | null {
+  const wallpapers = localWallpapers.value || {}
+  return wallpapers[id] || null
+}
+
+/**
+ * 获取指定页面作用域的本地上传壁纸引用。
+ * 兼容历史版本已配置但未分页面存储引用的情况。
+ */
+export function getLocalUploadedWallpaperRef(type: WallpaperPageType): wallpaperItem | null {
+  if (type === 'global') {
+    return localSettings.value.locallyUploadedWallpaper
+  }
+  if (type === 'searchPage') {
+    if (localSettings.value.searchPageLocallyUploadedWallpaper)
+      return localSettings.value.searchPageLocallyUploadedWallpaper
+
+    const id = extractWallpaperId(settings.value.searchPageWallpaper)
+    if (id && hasLocalWallpaper(id)) {
+      const data = getLocalWallpaperData(id)
+      return {
+        id,
+        name: data?.name || '',
+        url: `local-wallpaper:${id}`,
+        isLocal: true,
+      }
+    }
+    return null
+  }
+  if (type === 'momentsPage') {
+    if (localSettings.value.momentsPageLocallyUploadedWallpaper)
+      return localSettings.value.momentsPageLocallyUploadedWallpaper
+
+    const id = extractWallpaperId(settings.value.momentsPageWallpaper)
+    if (id && hasLocalWallpaper(id)) {
+      const data = getLocalWallpaperData(id)
+      return {
+        id,
+        name: data?.name || '',
+        url: `local-wallpaper:${id}`,
+        isLocal: true,
+      }
+    }
+    return null
+  }
+  return null
+}
+
+/**
+ * 设置指定页面作用域的本地上传壁纸引用
+ */
+export function setLocalUploadedWallpaperRef(type: WallpaperPageType, item: wallpaperItem | null): void {
+  if (type === 'global') {
+    localSettings.value.locallyUploadedWallpaper = item
+  }
+  else if (type === 'searchPage') {
+    localSettings.value.searchPageLocallyUploadedWallpaper = item
+  }
+  else if (type === 'momentsPage') {
+    localSettings.value.momentsPageLocallyUploadedWallpaper = item
+  }
+}
+
+/**
+ * 检查某个本地壁纸 ID 是否仍被其他配置或页面引用
+ */
+export function isWallpaperIdInUse(id: string, excludeType?: WallpaperPageType): boolean {
+  if (!id)
+    return false
+
+  // 检查全局
+  if (excludeType !== 'global') {
+    if (extractWallpaperId(settings.value.wallpaper) === id)
+      return true
+    if (localSettings.value.locallyUploadedWallpaper?.id === id)
+      return true
+  }
+
+  // 检查搜索页
+  if (excludeType !== 'searchPage') {
+    if (extractWallpaperId(settings.value.searchPageWallpaper) === id)
+      return true
+    if (localSettings.value.searchPageLocallyUploadedWallpaper?.id === id)
+      return true
+  }
+
+  // 检查动态页
+  if (excludeType !== 'momentsPage') {
+    if (extractWallpaperId(settings.value.momentsPageWallpaper) === id)
+      return true
+    if (localSettings.value.momentsPageLocallyUploadedWallpaper?.id === id)
+      return true
+  }
+
+  return false
+}
+
+/**
+ * 安全删除本地壁纸：仅在没有任何页面/设置引用该 ID 时才真正从本地存储中清除
+ */
+export function removeLocalWallpaperIfUnused(id: string, excludeType?: WallpaperPageType): void {
+  if (!id)
+    return
+  if (!isWallpaperIdInUse(id, excludeType)) {
+    removeLocalWallpaper(id)
+  }
 }

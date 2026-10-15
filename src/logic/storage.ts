@@ -183,6 +183,8 @@ export interface ShadowCurvePoint {
 export interface LocalSettings {
   // 壁纸相关
   locallyUploadedWallpaper: wallpaperItem | null
+  searchPageLocallyUploadedWallpaper: wallpaperItem | null
+  momentsPageLocallyUploadedWallpaper: wallpaperItem | null
 
   // 自定义CSS
   customizeCSS: boolean
@@ -469,6 +471,14 @@ export interface Settings {
   searchPageWallpaperBlurIntensity: number
   searchPageWallpaperCacheTime: number // URL壁纸缓存时间(小时), 0表示不缓存
 
+  individuallySetMomentsPageWallpaper: boolean
+  momentsPageWallpaperMode: 'buildIn' | 'byUrl'
+  momentsPageWallpaper: string
+  momentsPageEnableWallpaperMasking: boolean
+  momentsPageWallpaperMaskOpacity: number
+  momentsPageWallpaperBlurIntensity: number
+  momentsPageWallpaperCacheTime: number // URL壁纸缓存时间(小时), 0表示不缓存
+
   // 热搜功能设置（统一在搜索框聚焦时显示）
   showHotSearchInTopBar: boolean
 
@@ -605,6 +615,8 @@ export interface Settings {
 // 本地存储配置默认值
 export const originalLocalSettings: LocalSettings = {
   locallyUploadedWallpaper: null,
+  searchPageLocallyUploadedWallpaper: null,
+  momentsPageLocallyUploadedWallpaper: null,
   customizeCSS: false,
   customizeCSSContent: '',
   bewlyWidescreenSidebarWidth: 0,
@@ -801,6 +813,14 @@ export const originalSettings: Settings = {
   searchPageWallpaperMaskOpacity: 80,
   searchPageWallpaperBlurIntensity: 0,
   searchPageWallpaperCacheTime: 0, // 默认缓存24小时
+
+  individuallySetMomentsPageWallpaper: false,
+  momentsPageWallpaperMode: 'buildIn',
+  momentsPageWallpaper: '',
+  momentsPageEnableWallpaperMasking: false,
+  momentsPageWallpaperMaskOpacity: 80,
+  momentsPageWallpaperBlurIntensity: 0,
+  momentsPageWallpaperCacheTime: 0,
 
   // 热搜功能设置（统一在搜索框聚焦时显示）
   showHotSearchInTopBar: true,

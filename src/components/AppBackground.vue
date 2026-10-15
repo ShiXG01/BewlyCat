@@ -7,6 +7,7 @@ import { settings } from '~/logic'
 import { isLocalWallpaperUrl, resolveWallpaperUrl } from '~/utils/localWallpaper'
 import { hexToHSL } from '~/utils/main'
 import { cleanupExpiredCache, getOrCacheWallpaper } from '~/utils/wallpaperCache'
+import { getPageWallpaperConfig } from '~/utils/wallpaperConfig'
 
 const props = defineProps<{ activatedPage: AppPage }>()
 const emit = defineEmits<{ wallpaperReady: [ready: boolean] }>()
@@ -21,6 +22,8 @@ onMounted(() => {
 // 计算解析后的壁纸URL(支持本地壁纸和缓存控制)
 const resolvedWallpaper = ref('')
 const resolvedSearchPageWallpaper = ref('')
+const resolvedMomentsPageWallpaper = ref('')
+
 function waitForWallpaperDecode(url: string, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
@@ -121,6 +124,11 @@ async function resolveGlobalWallpaper(signal: AbortSignal) {
 
 // 解析搜索页壁纸
 async function resolveSearchWallpaper(signal: AbortSignal) {
+  if (!settings.value.individuallySetSearchPageWallpaper) {
+    resolvedSearchPageWallpaper.value = ''
+    return
+  }
+
   const originalUrl = settings.value.searchPageWallpaper
   const resolvedUrl = await resolveWallpaperSource(originalUrl, settings.value.searchPageWallpaperCacheTime)
   if (signal.aborted)
@@ -142,6 +150,34 @@ async function resolveSearchWallpaper(signal: AbortSignal) {
   }
 }
 
+// 解析动态页壁纸
+async function resolveMomentsWallpaper(signal: AbortSignal) {
+  if (!settings.value.individuallySetMomentsPageWallpaper) {
+    resolvedMomentsPageWallpaper.value = ''
+    return
+  }
+
+  const originalUrl = settings.value.momentsPageWallpaper
+  const resolvedUrl = await resolveWallpaperSource(originalUrl, settings.value.momentsPageWallpaperCacheTime)
+  if (signal.aborted)
+    return
+
+  if (!resolvedUrl) {
+    resolvedMomentsPageWallpaper.value = ''
+    return
+  }
+
+  try {
+    await waitForWallpaperDecode(resolvedUrl, signal)
+    if (!signal.aborted)
+      resolvedMomentsPageWallpaper.value = resolvedUrl
+  }
+  catch {
+    if (!signal.aborted)
+      resolvedMomentsPageWallpaper.value = ''
+  }
+}
+
 // 逐项监听壁纸来源和缓存时间，避免无关设置触发大图重复加载、解码。
 watch([() => settings.value.wallpaper, () => settings.value.wallpaperCacheTime], ([, newCacheTime], oldValue, onCleanup) => {
   const controller = new AbortController()
@@ -153,20 +189,57 @@ watch([() => settings.value.wallpaper, () => settings.value.wallpaperCacheTime],
   void resolveGlobalWallpaper(controller.signal)
 }, { immediate: true })
 
-watch([() => settings.value.searchPageWallpaper, () => settings.value.searchPageWallpaperCacheTime], ([, newCacheTime], oldValue, onCleanup) => {
-  const controller = new AbortController()
-  onCleanup(() => controller.abort())
-  // 如果缓存时间改变,用新的缓存时间清理可能已过期的缓存
-  if (oldValue && newCacheTime !== oldValue[1]) {
-    cleanupExpiredCache(newCacheTime)
-  }
-  void resolveSearchWallpaper(controller.signal)
-}, { immediate: true })
+watch(
+  [
+    () => settings.value.individuallySetSearchPageWallpaper,
+    () => settings.value.searchPageWallpaper,
+    () => settings.value.searchPageWallpaperCacheTime,
+  ],
+  ([individuallySet, , newCacheTime], oldValue, onCleanup) => {
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    if (oldValue && newCacheTime !== oldValue[2]) {
+      cleanupExpiredCache(newCacheTime)
+    }
+    if (individuallySet) {
+      void resolveSearchWallpaper(controller.signal)
+    }
+    else {
+      resolvedSearchPageWallpaper.value = ''
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  [
+    () => settings.value.individuallySetMomentsPageWallpaper,
+    () => settings.value.momentsPageWallpaper,
+    () => settings.value.momentsPageWallpaperCacheTime,
+  ],
+  ([individuallySet, , newCacheTime], oldValue, onCleanup) => {
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    if (oldValue && newCacheTime !== oldValue[2]) {
+      cleanupExpiredCache(newCacheTime)
+    }
+    if (individuallySet) {
+      void resolveMomentsWallpaper(controller.signal)
+    }
+    else {
+      resolvedMomentsPageWallpaper.value = ''
+    }
+  },
+  { immediate: true },
+)
 
 // 计算当前页面使用的壁纸URL
 const currentWallpaperUrl = computed(() => {
   if (props.activatedPage === AppPage.Search && settings.value.individuallySetSearchPageWallpaper) {
     return resolvedSearchPageWallpaper.value
+  }
+  if (props.activatedPage === AppPage.Moments && settings.value.individuallySetMomentsPageWallpaper) {
+    return resolvedMomentsPageWallpaper.value
   }
   return resolvedWallpaper.value
 })
@@ -175,11 +248,14 @@ const currentWallpaperUrl = computed(() => {
 watch(currentWallpaperUrl, url => emit('wallpaperReady', Boolean(url)), { immediate: true })
 onBeforeUnmount(() => emit('wallpaperReady', false))
 
-const currentWallpaperBlurIntensity = computed(() => {
-  if (props.activatedPage === AppPage.Search && settings.value.individuallySetSearchPageWallpaper)
-    return settings.value.searchPageWallpaperBlurIntensity
+const currentWallpaperConfig = computed(() => getPageWallpaperConfig(props.activatedPage, settings.value))
 
-  return settings.value.wallpaperBlurIntensity
+const currentWallpaperBlurIntensity = computed(() => {
+  return currentWallpaperConfig.value.blurIntensity
+})
+
+const isCurrentWallpaperMaskEnabled = computed(() => {
+  return currentWallpaperConfig.value.maskEnabled
 })
 
 const wallpaperMaskStyle = computed((): CSSProperties => {
@@ -214,33 +290,29 @@ const themeColorLinearGradientBackground = computed((): string => {
     hsl(${themeColorHue.value}, ${themeColorSaturation.value}%, 100%) 100%)`
 })
 
-watch(() => settings.value.wallpaperMaskOpacity, () => {
-  setAppWallpaperMaskingOpacity()
-})
-
-watch(() => settings.value.searchPageWallpaperMaskOpacity, () => {
-  setAppWallpaperMaskingOpacity()
-})
-
-watch(() => props.activatedPage, (newValue, oldValue) => {
-  // If u have set the `individuallySetSearchPageWallpaper`, reapply the wallpaper when the new page is search page
-  // or when switching from a search page to another page, since search page has its own wallpaper.
-  const isSearchPage = (page: AppPage) => page === AppPage.Search
-  if (settings.value.individuallySetSearchPageWallpaper && (isSearchPage(newValue) || isSearchPage(oldValue)))
-    setAppWallpaperMaskingOpacity()
-})
-
 function setAppWallpaperMaskingOpacity() {
   const bewlyElement = document.querySelector<HTMLElement>('#bewly')
   if (!bewlyElement)
     return
 
-  const isSearchPage = props.activatedPage === AppPage.Search
-  if (settings.value.individuallySetSearchPageWallpaper && isSearchPage)
-    bewlyElement.style.setProperty('--bew-homepage-bg-mask-opacity', `${settings.value.searchPageWallpaperMaskOpacity}%`)
-  else
-    bewlyElement.style.setProperty('--bew-homepage-bg-mask-opacity', `${settings.value.wallpaperMaskOpacity}%`)
+  const config = getPageWallpaperConfig(props.activatedPage, settings.value)
+  bewlyElement.style.setProperty('--bew-homepage-bg-mask-opacity', `${config.maskOpacity}%`)
 }
+
+watch(
+  [
+    () => props.activatedPage,
+    () => settings.value.wallpaperMaskOpacity,
+    () => settings.value.searchPageWallpaperMaskOpacity,
+    () => settings.value.individuallySetSearchPageWallpaper,
+    () => settings.value.momentsPageWallpaperMaskOpacity,
+    () => settings.value.individuallySetMomentsPageWallpaper,
+  ],
+  () => {
+    setAppWallpaperMaskingOpacity()
+  },
+  { immediate: true },
+)
 
 // setup 阶段即写入遮罩透明度，避免首帧沿用 token 的 0 默认值。
 setAppWallpaperMaskingOpacity()
@@ -261,7 +333,7 @@ setAppWallpaperMaskingOpacity()
     </Transition>
 
     <Transition name="fade">
-      <div v-if="activatedPage === AppPage.Search">
+      <div v-if="activatedPage === AppPage.Search" key="search">
         <!-- background -->
         <div
           pos="absolute top-0 left-0" w-full h-full duration-300 bg="cover center $bew-homepage-bg"
@@ -271,14 +343,31 @@ setAppWallpaperMaskingOpacity()
         <!-- background mask -->
         <Transition name="fade">
           <div
-            v-if="(!settings.individuallySetSearchPageWallpaper && settings.enableWallpaperMasking) || (settings.searchPageEnableWallpaperMasking)"
+            v-if="isCurrentWallpaperMaskEnabled"
             pos="absolute top-0 left-0" w-full h-full pointer-events-none bg="$bew-homepage-bg-mask"
             z--1
             :style="wallpaperMaskStyle"
           />
         </Transition>
       </div>
-      <div v-else>
+      <div v-else-if="activatedPage === AppPage.Moments" key="moments">
+        <!-- background -->
+        <div
+          pos="absolute top-0 left-0" w-full h-full duration-300 bg="cover center $bew-homepage-bg"
+          z--1
+          :style="{ backgroundImage: `url('${currentWallpaperUrl}')` }"
+        />
+        <!-- background mask -->
+        <Transition name="fade">
+          <div
+            v-if="isCurrentWallpaperMaskEnabled"
+            pos="absolute top-0 left-0" w-full h-full pointer-events-none bg="$bew-homepage-bg-mask"
+            z--1
+            :style="wallpaperMaskStyle"
+          />
+        </Transition>
+      </div>
+      <div v-else key="default">
         <!-- background -->
         <div
           :style="{ backgroundImage: `url('${currentWallpaperUrl}')` }"
@@ -289,7 +378,7 @@ setAppWallpaperMaskingOpacity()
         <!-- background mask -->
         <Transition name="fade">
           <div
-            v-if="settings.enableWallpaperMasking"
+            v-if="isCurrentWallpaperMaskEnabled"
             pos="absolute top-0 left-0" w-full h-full pointer-events-none bg="$bew-homepage-bg-mask"
             z--1
             :style="wallpaperMaskStyle"

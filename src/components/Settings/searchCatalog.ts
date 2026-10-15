@@ -295,6 +295,8 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.only_cover_video_preview',
     'settings.moments_card_open_mode',
     'settings.moments_video_card_open_mode',
+    'settings.individually_set_moments_page_wallpaper',
+    ...wallpaperTitleKeys,
     'settings.group_moments_filters',
     'settings.moments_filter_video_dynamic',
     'settings.moments_filter_draw_dynamic',

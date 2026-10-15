@@ -6,6 +6,7 @@ import { createApp } from 'vue'
 import { useDark } from '~/composables/useDark'
 import { CONTENT_SCRIPT_COMMIT, CONTENT_SCRIPT_PING, CONTENT_SCRIPT_PONG } from '~/constants/contentScript'
 import { BEWLY_IFRAME_DRAWER_HOST_CLASS, BEWLY_MOUNTED, IFRAME_DARK_MODE_CHANGE, IFRAME_TOP_BAR_CHANGE } from '~/constants/globalEvents'
+import type { wallpaperItem } from '~/constants/imgs'
 import { localSettings, settings, settingsReady } from '~/logic'
 import { setupApp } from '~/logic/common-setup'
 import { useTopBarStore } from '~/stores/topBarStore'
@@ -19,7 +20,7 @@ import { findLeafActiveElement } from '~/utils/element'
 import { initFavoriteDialogEnhancement } from '~/utils/favoriteDialog'
 import { i18n } from '~/utils/i18n'
 import { runWhenIdle } from '~/utils/lazyLoad'
-import { getLocalWallpaper, hasLocalWallpaper, isLocalWallpaperUrl } from '~/utils/localWallpaper'
+import { extractWallpaperId, getAllLocalWallpapers, hasLocalWallpaper, isLocalWallpaperUrl } from '~/utils/localWallpaper'
 import { getCookie, injectCSS, isElectron, isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage, isVideoPlaybackPage, isWatchLaterListPage } from '~/utils/main'
 import { initNativeFavoriteSeasonPlayAllIntercept } from '~/utils/nativeFavoriteSeasonPlayAll'
 import { createPageSettingsPayload } from '~/utils/pageSettingsProtocol'
@@ -1734,35 +1735,50 @@ else if (shouldInitializeContentScript) {
 
   // 验证和恢复本地壁纸
   function validateAndRestoreLocalWallpaper() {
-    const localWallpaper = localSettings.value.locallyUploadedWallpaper
-    if (localWallpaper?.isLocal && localWallpaper.id) {
-      if (!hasLocalWallpaper(localWallpaper.id)) {
-        localSettings.value.locallyUploadedWallpaper = null
+    // 逐页校验当前配置中的 local-wallpaper 引用，按实际 ID 校验而非任一丢失即清空所有
+    const wallpaperPages: { getUrl: () => string, setUrl: (url: string) => void }[] = [
+      { getUrl: () => settings.value.wallpaper, setUrl: url => settings.value.wallpaper = url },
+      { getUrl: () => settings.value.searchPageWallpaper, setUrl: url => settings.value.searchPageWallpaper = url },
+      { getUrl: () => settings.value.momentsPageWallpaper, setUrl: url => settings.value.momentsPageWallpaper = url },
+    ]
 
-        // 如果当前壁纸使用的是丢失的本地壁纸，也清理掉
-        if (isLocalWallpaperUrl(settings.value.wallpaper)) {
-          settings.value.wallpaper = ''
-        }
-        if (isLocalWallpaperUrl(settings.value.searchPageWallpaper)) {
-          settings.value.searchPageWallpaper = ''
+    wallpaperPages.forEach(({ getUrl, setUrl }) => {
+      const currentUrl = getUrl()
+      if (isLocalWallpaperUrl(currentUrl)) {
+        const id = extractWallpaperId(currentUrl)
+        if (!id || !hasLocalWallpaper(id)) {
+          setUrl('')
         }
       }
-      else {
-      // 如果本地壁纸存在，确保当前壁纸URL使用正确的格式
-        const expectedUrl = `local-wallpaper:${localWallpaper.id}`
-        const base64Data = getLocalWallpaper(localWallpaper.id)
+    })
 
-        if (base64Data) {
-        // 检查当前壁纸是否需要更新格式（从旧的base64格式迁移到新格式）
-          if (settings.value.wallpaper.startsWith('data:image/') && settings.value.wallpaper === base64Data) {
-            settings.value.wallpaper = expectedUrl
-          }
-          if (settings.value.searchPageWallpaper.startsWith('data:image/') && settings.value.searchPageWallpaper === base64Data) {
-            settings.value.searchPageWallpaper = expectedUrl
-          }
+    // 逐项校验各页面的本地上传引用
+    const uploadedRefs: { getRef: () => wallpaperItem | null, setRef: (item: null) => void }[] = [
+      { getRef: () => localSettings.value.locallyUploadedWallpaper, setRef: () => localSettings.value.locallyUploadedWallpaper = null },
+      { getRef: () => localSettings.value.searchPageLocallyUploadedWallpaper, setRef: () => localSettings.value.searchPageLocallyUploadedWallpaper = null },
+      { getRef: () => localSettings.value.momentsPageLocallyUploadedWallpaper, setRef: () => localSettings.value.momentsPageLocallyUploadedWallpaper = null },
+    ]
+
+    uploadedRefs.forEach(({ getRef, setRef }) => {
+      const ref = getRef()
+      if (ref?.isLocal && ref.id) {
+        if (!hasLocalWallpaper(ref.id)) {
+          setRef(null)
         }
       }
-    }
+    })
+
+    // 检查是否有使用旧版 base64 格式的壁纸需要迁移为 local-wallpaper:id
+    wallpaperPages.forEach(({ getUrl, setUrl }) => {
+      const currentUrl = getUrl()
+      if (currentUrl.startsWith('data:image/')) {
+        const allLocal = getAllLocalWallpapers()
+        const matched = allLocal.find(item => item.base64 === currentUrl)
+        if (matched) {
+          setUrl(`local-wallpaper:${matched.id}`)
+        }
+      }
+    })
   }
 
   // 在应用启动时验证本地壁纸

@@ -659,6 +659,7 @@ settings:
   depersonalize_search_results: 去除個人化搜尋
   depersonalize_search_results_desc: 啟用後，搜尋結果請求不攜帶登入 Cookie。
   individually_set_search_page_wallpaper: 單獨設定搜尋頁背景
+  individually_set_moments_page_wallpaper: 單獨設定動態頁壁紙
   recommendation_mode: 推薦模式
   recommendation_mode_desc: |
     Web：普通網頁端推薦模式。無 Cookie：請求首頁推薦時不攜帶 Cookie。App：手機端推薦模式，需先授權 access key。

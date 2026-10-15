@@ -744,6 +744,7 @@ settings:
   search_results_pagination_mode: Search results pagination mode
   search_results_pagination_mode_desc: 'Choose how search results are displayed: infinite scroll or page-based navigation'
   individually_set_search_page_wallpaper: Individually set search page wallpaper
+  individually_set_moments_page_wallpaper: Individually set moments page wallpaper
   recommendation_mode: Recommendation mode
   recommendation_mode_desc: >
     Web: normal web recommendation mode. No Cookie: request homepage

@@ -2,8 +2,16 @@
 import { useI18n } from 'vue-i18n'
 
 import { WALLPAPERS } from '~/constants/imgs'
-import { localSettings, settings } from '~/logic'
-import { hasLocalWallpaper, isLocalWallpaperUrl, removeLocalWallpaper, resolveWallpaperUrl, storeLocalWallpaper } from '~/utils/localWallpaper'
+import { settings } from '~/logic'
+import {
+  getLocalUploadedWallpaperRef,
+  hasLocalWallpaper,
+  isLocalWallpaperUrl,
+  removeLocalWallpaperIfUnused,
+  resolveWallpaperUrl,
+  setLocalUploadedWallpaperRef,
+  storeLocalWallpaper,
+} from '~/utils/localWallpaper'
 import { compressAndResizeImage } from '~/utils/main'
 
 import SettingsItem from './SettingsItem.vue'
@@ -13,7 +21,7 @@ import SettingsSegmentedControl from './SettingsSegmentedControl.vue'
 const props = defineProps<Props>()
 
 interface Props {
-  type: 'global' | 'searchPage'
+  type: 'global' | 'searchPage' | 'momentsPage'
 }
 type WallpaperMode = 'buildIn' | 'byUrl'
 
@@ -21,8 +29,23 @@ const { t } = useI18n()
 const uploadWallpaperRef = ref<HTMLInputElement | null>(null)
 
 const isGlobal = computed(() => props.type === 'global')
+const isSearchPage = computed(() => props.type === 'searchPage')
+const isMomentsPage = computed(() => props.type === 'momentsPage')
+
+const isIndividuallySet = computed(() => {
+  if (isSearchPage.value)
+    return settings.value.individuallySetSearchPageWallpaper
+  if (isMomentsPage.value)
+    return settings.value.individuallySetMomentsPageWallpaper
+  return false
+})
+
 const isBuildInWallpaper = computed(() => {
-  return isGlobal.value ? settings.value.wallpaperMode === 'buildIn' : settings.value.searchPageWallpaperMode === 'buildIn'
+  if (isGlobal.value)
+    return settings.value.wallpaperMode === 'buildIn'
+  if (isSearchPage.value)
+    return settings.value.searchPageWallpaperMode === 'buildIn'
+  return settings.value.momentsPageWallpaperMode === 'buildIn'
 })
 const wallpaperMode = computed<WallpaperMode>({
   get: () => isBuildInWallpaper.value ? 'buildIn' : 'byUrl',
@@ -33,16 +56,27 @@ const wallpaperModeOptions = computed<{ label: string, value: WallpaperMode }[]>
   { label: t('settings.wallpaper_mode_opt.by_url'), value: 'byUrl' },
 ])
 
+const currentLocalUploadedWallpaper = computed(() => {
+  return getLocalUploadedWallpaperRef(props.type)
+})
+
 // 计算本地壁纸的实际显示URL
 const localWallpaperDisplayUrl = computed(() => {
-  const localWallpaper = localSettings.value.locallyUploadedWallpaper
+  const localWallpaper = currentLocalUploadedWallpaper.value
   if (!localWallpaper?.url) {
     return null
   }
 
-  // 使用新的解析函数
   return resolveWallpaperUrl(localWallpaper.url)
 })
+
+function getCurrentWallpaperUrl(): string {
+  if (isGlobal.value)
+    return settings.value.wallpaper
+  if (isSearchPage.value)
+    return settings.value.searchPageWallpaper
+  return settings.value.momentsPageWallpaper
+}
 
 // 检查是否为本地壁纸URL
 function isLocalWallpaper(url: string): boolean {
@@ -52,17 +86,18 @@ function isLocalWallpaper(url: string): boolean {
 function changeWallpaperType(type: 'buildIn' | 'byUrl') {
   if (isGlobal.value) {
     settings.value.wallpaperMode = type
+    if (type === 'byUrl' && (settings.value.wallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.wallpaper)))
+      settings.value.wallpaper = ''
+  }
+  else if (isSearchPage.value) {
+    settings.value.searchPageWallpaperMode = type
+    if (type === 'byUrl' && (settings.value.searchPageWallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.searchPageWallpaper)))
+      settings.value.searchPageWallpaper = ''
   }
   else {
-    settings.value.searchPageWallpaperMode = type
-  }
-
-  // Set the wallpaper to empty if it's a locally uploaded wallpaper to prevent the `QUOTA_BYTES quota exceeded` error
-  if (type === 'byUrl') {
-    if (settings.value.wallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.wallpaper))
-      settings.value.wallpaper = ''
-    else if (settings.value.searchPageWallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.searchPageWallpaper))
-      settings.value.searchPageWallpaper = ''
+    settings.value.momentsPageWallpaperMode = type
+    if (type === 'byUrl' && (settings.value.momentsPageWallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.momentsPageWallpaper)))
+      settings.value.momentsPageWallpaper = ''
   }
 }
 
@@ -75,8 +110,11 @@ function changeWallpaper(url: string) {
       settings.value.enableWallpaperMasking = false
     settings.value.wallpaper = url
   }
-  else {
+  else if (isSearchPage.value) {
     settings.value.searchPageWallpaper = url
+  }
+  else {
+    settings.value.momentsPageWallpaper = url
   }
 }
 
@@ -94,8 +132,9 @@ function triggerUploadWallpaper() {
 }
 
 function handleLocalWallpaperClick() {
-  const localWallpaperUrl = localSettings.value.locallyUploadedWallpaper?.url
-  if (localWallpaperUrl)
+  const localWallpaper = currentLocalUploadedWallpaper.value
+  const localWallpaperUrl = localWallpaper?.url
+  if (localWallpaperUrl && localWallpaper?.id && hasLocalWallpaper(localWallpaper.id))
     changeWallpaper(localWallpaperUrl)
   else
     triggerUploadWallpaper()
@@ -113,9 +152,10 @@ async function handleUploadWallpaper(e: Event) {
       // 转换为base64
       const base64 = await fileToBase64(compressedFile) as string
 
-      // 清理旧的本地壁纸
-      if (localSettings.value.locallyUploadedWallpaper?.isLocal && localSettings.value.locallyUploadedWallpaper?.id) {
-        removeLocalWallpaper(localSettings.value.locallyUploadedWallpaper.id)
+      // 清理旧的本地壁纸（有引用保护，若仍被其他页面引用则保留）
+      const oldRef = getLocalUploadedWallpaperRef(props.type)
+      if (oldRef?.isLocal && oldRef.id) {
+        removeLocalWallpaperIfUnused(oldRef.id, props.type)
       }
 
       // 存储到本地storage
@@ -125,11 +165,11 @@ async function handleUploadWallpaper(e: Event) {
       const localWallpaperUrl = `local-wallpaper:${localWallpaperRef.id}`
       changeWallpaper(localWallpaperUrl)
 
-      // 保存本地壁纸引用（不包含base64数据）
-      localSettings.value.locallyUploadedWallpaper = {
+      // 保存本地壁纸引用（按页面保存引用）
+      setLocalUploadedWallpaperRef(props.type, {
         ...localWallpaperRef,
-        url: localWallpaperUrl, // 使用标识符而不是base64
-      }
+        url: localWallpaperUrl,
+      })
     }
     catch (error) {
       console.error('上传壁纸失败:', error)
@@ -138,24 +178,25 @@ async function handleUploadWallpaper(e: Event) {
 }
 
 function handleRemoveCustomWallpaper() {
-  // 清理本地存储的壁纸数据
-  if (localSettings.value.locallyUploadedWallpaper?.isLocal && localSettings.value.locallyUploadedWallpaper?.id) {
-    removeLocalWallpaper(localSettings.value.locallyUploadedWallpaper.id)
+  // 清理本地存储的壁纸数据（有引用保护）
+  const currentRef = getLocalUploadedWallpaperRef(props.type)
+  if (currentRef?.isLocal && currentRef.id) {
+    removeLocalWallpaperIfUnused(currentRef.id, props.type)
   }
 
   changeWallpaper('')
-  localSettings.value.locallyUploadedWallpaper = null
+  setLocalUploadedWallpaperRef(props.type, null)
 }
 
 // 检查本地壁纸是否有效，如果无效则清理
 function validateLocalWallpaper() {
-  const localWallpaper = localSettings.value.locallyUploadedWallpaper
+  const localWallpaper = getLocalUploadedWallpaperRef(props.type)
   if (localWallpaper?.isLocal && localWallpaper.id) {
     if (!hasLocalWallpaper(localWallpaper.id)) {
-      localSettings.value.locallyUploadedWallpaper = null
+      setLocalUploadedWallpaperRef(props.type, null)
 
       // 如果当前壁纸使用的是丢失的本地壁纸，也清理掉
-      const currentWallpaper = isGlobal.value ? settings.value.wallpaper : settings.value.searchPageWallpaper
+      const currentWallpaper = getCurrentWallpaperUrl()
       if (isLocalWallpaper(currentWallpaper)) {
         changeWallpaper('')
       }
@@ -171,7 +212,7 @@ onMounted(() => {
 
 <template>
   <SettingsItemGroup :title="$t('settings.group_wallpaper')">
-    <SettingsItem v-if="!isGlobal" :title="$t('settings.individually_set_search_page_wallpaper')" right-width="auto">
+    <SettingsItem v-if="isSearchPage" :title="$t('settings.individually_set_search_page_wallpaper')" right-width="auto">
       <template #desc>
         <span class="bew-warning-text">{{ $t('common.performance_impact_warn') }}</span>
       </template>
@@ -179,7 +220,15 @@ onMounted(() => {
       <Radio v-model="settings.individuallySetSearchPageWallpaper" />
     </SettingsItem>
 
-    <template v-if="isGlobal || (settings.individuallySetSearchPageWallpaper && !isGlobal)">
+    <SettingsItem v-else-if="isMomentsPage" :title="$t('settings.individually_set_moments_page_wallpaper')" right-width="auto">
+      <template #desc>
+        <span class="bew-warning-text">{{ $t('common.performance_impact_warn') }}</span>
+      </template>
+
+      <Radio v-model="settings.individuallySetMomentsPageWallpaper" />
+    </SettingsItem>
+
+    <template v-if="isGlobal || isIndividuallySet">
       <SettingsItem :title="$t('settings.wallpaper_mode')" :desc="$t('settings.wallpaper_mode_desc')" right-width="auto">
         <SettingsSegmentedControl
           v-model="wallpaperMode"
@@ -207,8 +256,21 @@ onMounted(() => {
           </template>
         </Input>
         <Input
-          v-else
+          v-else-if="isSearchPage"
           v-model="settings.searchPageWallpaperCacheTime"
+          type="number"
+          :min="0"
+          :max="168"
+          placeholder="0"
+          w-100px
+        >
+          <template #suffix>
+            <span text="sm $bew-text-2">h</span>
+          </template>
+        </Input>
+        <Input
+          v-else
+          v-model="settings.momentsPageWallpaperCacheTime"
           type="number"
           :min="0"
           :max="168"
@@ -229,7 +291,7 @@ onMounted(() => {
               aspect-video bg="$bew-fill-1" rounded="$bew-radius" overflow-hidden
               un-border="4 transparent" cursor-pointer
               grid place-items-center
-              :class="{ 'selected-wallpaper': isGlobal ? settings.wallpaper === '' : settings.searchPageWallpaper === '' }"
+              :class="{ 'selected-wallpaper': getCurrentWallpaperUrl() === '' }"
               @click="changeWallpaper('')"
             >
               <div i-tabler:photo-off text="size-$bew-icon-size-xl $bew-text-3" />
@@ -240,7 +302,7 @@ onMounted(() => {
                 class="bew-settings-option--lift"
                 aspect-video bg="$bew-fill-1" rounded="$bew-radius" overflow-hidden
                 un-border="4 transparent" w-full
-                :class="{ 'selected-wallpaper': isGlobal ? settings.wallpaper === item.url : settings.searchPageWallpaper === item.url }"
+                :class="{ 'selected-wallpaper': getCurrentWallpaperUrl() === item.url }"
                 @click="changeWallpaper(item.url)"
               >
                 <img
@@ -252,7 +314,7 @@ onMounted(() => {
               </picture>
             </Tooltip>
 
-            <Tooltip placement="top" :content="localSettings.locallyUploadedWallpaper?.name || ''" aspect-video>
+            <Tooltip placement="top" :content="currentLocalUploadedWallpaper?.name || ''" aspect-video>
               <!-- Upload wallpaper input -->
               <input
                 ref="uploadWallpaperRef" type="file" accept="image/*"
@@ -262,16 +324,14 @@ onMounted(() => {
 
               <picture
                 class="group bew-settings-option--lift"
-                :class="{ 'selected-wallpaper': isGlobal
-                  ? settings.wallpaper === localSettings.locallyUploadedWallpaper?.url
-                  : settings.searchPageWallpaper === localSettings.locallyUploadedWallpaper?.url }"
+                :class="{ 'selected-wallpaper': getCurrentWallpaperUrl() === currentLocalUploadedWallpaper?.url }"
                 aspect-video bg="$bew-fill-1" rounded="$bew-radius" overflow-hidden
                 un-border="4 transparent" w-full
                 flex="~ items-center justify-center"
                 @click="handleLocalWallpaperClick"
               >
                 <div
-                  v-if="localSettings.locallyUploadedWallpaper"
+                  v-if="currentLocalUploadedWallpaper"
                   class="opacity-0 group-hover:opacity-100" duration-300
                   pos="absolute top-1 right-1" z-1 flex="~ gap-1"
                   :style="{ fontSize: 'var(--bew-font-size-control)', lineHeight: 'var(--bew-line-height-control)' }"
@@ -294,7 +354,7 @@ onMounted(() => {
                   </button>
                 </div>
                 <div
-                  v-if="!localSettings.locallyUploadedWallpaper"
+                  v-if="!currentLocalUploadedWallpaper"
                   absolute w-full h-full grid place-items-center
                 >
                   <div
@@ -304,8 +364,8 @@ onMounted(() => {
                 </div>
                 <img
                   v-else
-                  :src="localWallpaperDisplayUrl || localSettings.locallyUploadedWallpaper.url"
-                  :alt="localSettings.locallyUploadedWallpaper.name"
+                  :src="localWallpaperDisplayUrl || currentLocalUploadedWallpaper.url"
+                  :alt="currentLocalUploadedWallpaper.name"
                   w-full h-full object-cover
                 >
               </picture>
@@ -322,15 +382,16 @@ onMounted(() => {
               w="xl:1/5 lg:1/4 md:1/3"
             >
               <img
-                v-if="isGlobal ? settings.wallpaper : settings.searchPageWallpaper"
-                :src="isGlobal ? settings.wallpaper : settings.searchPageWallpaper" alt="" loading="lazy"
+                v-if="getCurrentWallpaperUrl()"
+                :src="getCurrentWallpaperUrl()" alt="" loading="lazy"
                 w-full h-full object-cover
                 onerror="this.style.display='none'; this.onerror=null;"
               >
             </picture>
             <div>
               <Input v-if="isGlobal" v-model="settings.wallpaper" w-full />
-              <Input v-else v-model="settings.searchPageWallpaper" w-full />
+              <Input v-else-if="isSearchPage" v-model="settings.searchPageWallpaper" w-full />
+              <Input v-else v-model="settings.momentsPageWallpaper" w-full />
               <p color="sm $bew-text-3" mt-2>
                 {{ $t('settings.image_url_hint') }}
               </p>
@@ -345,18 +406,29 @@ onMounted(() => {
         </template>
 
         <Radio v-if="isGlobal" v-model="settings.enableWallpaperMasking" />
-        <Radio v-else v-model="settings.searchPageEnableWallpaperMasking" />
+        <Radio v-else-if="isSearchPage" v-model="settings.searchPageEnableWallpaperMasking" />
+        <Radio v-else v-model="settings.momentsPageEnableWallpaperMasking" />
       </SettingsItem>
-      <SettingsItem v-if="isGlobal ? settings.enableWallpaperMasking : settings.searchPageEnableWallpaperMasking" :title="$t('settings.wallpaper_mask_opacity')" right-width="auto">
+      <SettingsItem
+        v-if="isGlobal ? settings.enableWallpaperMasking : (isSearchPage ? settings.searchPageEnableWallpaperMasking : settings.momentsPageEnableWallpaperMasking)"
+        :title="$t('settings.wallpaper_mask_opacity')"
+        right-width="auto"
+      >
         <div class="slider-control">
           <Slider v-if="isGlobal" v-model="settings.wallpaperMaskOpacity" :label="`${settings.wallpaperMaskOpacity}%`" />
-          <Slider v-else v-model="settings.searchPageWallpaperMaskOpacity" :label="`${settings.searchPageWallpaperMaskOpacity}%`" />
+          <Slider v-else-if="isSearchPage" v-model="settings.searchPageWallpaperMaskOpacity" :label="`${settings.searchPageWallpaperMaskOpacity}%`" />
+          <Slider v-else v-model="settings.momentsPageWallpaperMaskOpacity" :label="`${settings.momentsPageWallpaperMaskOpacity}%`" />
         </div>
       </SettingsItem>
-      <SettingsItem v-if="isGlobal ? settings.enableWallpaperMasking : settings.searchPageEnableWallpaperMasking" :title="$t('settings.wallpaper_blur_intensity')" right-width="auto">
+      <SettingsItem
+        v-if="isGlobal ? settings.enableWallpaperMasking : (isSearchPage ? settings.searchPageEnableWallpaperMasking : settings.momentsPageEnableWallpaperMasking)"
+        :title="$t('settings.wallpaper_blur_intensity')"
+        right-width="auto"
+      >
         <div class="slider-control">
           <Slider v-if="isGlobal" v-model="settings.wallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.wallpaperBlurIntensity}px`" />
-          <Slider v-else v-model="settings.searchPageWallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.searchPageWallpaperBlurIntensity}px`" />
+          <Slider v-else-if="isSearchPage" v-model="settings.searchPageWallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.searchPageWallpaperBlurIntensity}px`" />
+          <Slider v-else v-model="settings.momentsPageWallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.momentsPageWallpaperBlurIntensity}px`" />
         </div>
       </SettingsItem>
     </template>
