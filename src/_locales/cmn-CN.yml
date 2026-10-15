@@ -824,6 +824,15 @@ settings:
   search_results_pagination_mode_desc: 选择搜索结果的展示方式：滚动自动加载或翻页
   individually_set_search_page_wallpaper: 单独设置搜索页背景
   individually_set_moments_page_wallpaper: 单独设置动态页壁纸
+  video_page_wallpaper_type: 视频播放页背景模式
+  video_page_wallpaper_type_opt:
+    off: 关闭
+    follow: 跟随全局
+    individual: 独立设置
+  video_page_wallpaper_type_desc:
+    off: 默认关闭视频播放页背景，保留 B 站原生播放页背景。
+    follow: 跟随全局背景设置（包括图片、五种布局、遮罩、模糊及缓存设置）。
+    individual: 为普通视频播放页单独设置背景、布局、遮罩和模糊。
   recommendation_mode: 推荐模式
   recommendation_mode_desc: |
     Web：普通网页端推荐模式。无 Cookie：请求首页推荐时不携带 Cookie。App：移动端推荐模式，需先授权 access key。

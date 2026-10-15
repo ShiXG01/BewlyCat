@@ -23,7 +23,7 @@ import SettingsSegmentedControl from './SettingsSegmentedControl.vue'
 const props = defineProps<Props>()
 
 interface Props {
-  type: 'global' | 'searchPage' | 'momentsPage'
+  type: 'global' | 'searchPage' | 'momentsPage' | 'videoPage'
 }
 type WallpaperMode = 'buildIn' | 'byUrl'
 
@@ -33,12 +33,15 @@ const uploadWallpaperRef = ref<HTMLInputElement | null>(null)
 const isGlobal = computed(() => props.type === 'global')
 const isSearchPage = computed(() => props.type === 'searchPage')
 const isMomentsPage = computed(() => props.type === 'momentsPage')
+const isVideoPage = computed(() => props.type === 'videoPage')
 
 const isIndividuallySet = computed(() => {
   if (isSearchPage.value)
     return settings.value.individuallySetSearchPageWallpaper
   if (isMomentsPage.value)
     return settings.value.individuallySetMomentsPageWallpaper
+  if (isVideoPage.value)
+    return settings.value.videoPageWallpaperType === 'individual'
   return false
 })
 
@@ -47,7 +50,9 @@ const isBuildInWallpaper = computed(() => {
     return settings.value.wallpaperMode === 'buildIn'
   if (isSearchPage.value)
     return settings.value.searchPageWallpaperMode === 'buildIn'
-  return settings.value.momentsPageWallpaperMode === 'buildIn'
+  if (isMomentsPage.value)
+    return settings.value.momentsPageWallpaperMode === 'buildIn'
+  return settings.value.videoPageWallpaperMode === 'buildIn'
 })
 const wallpaperMode = computed<WallpaperMode>({
   get: () => isBuildInWallpaper.value ? 'buildIn' : 'byUrl',
@@ -57,6 +62,27 @@ const wallpaperModeOptions = computed<{ label: string, value: WallpaperMode }[]>
   { label: t('settings.wallpaper_mode_opt.build_in'), value: 'buildIn' },
   { label: t('settings.wallpaper_mode_opt.by_url'), value: 'byUrl' },
 ])
+
+const videoPageWallpaperTypeOptions = computed(() => [
+  { label: t('settings.video_page_wallpaper_type_opt.off'), value: 'off' },
+  { label: t('settings.video_page_wallpaper_type_opt.follow'), value: 'follow' },
+  { label: t('settings.video_page_wallpaper_type_opt.individual'), value: 'individual' },
+])
+
+const videoPageWallpaperTypeDesc = computed(() => {
+  const type = settings.value.videoPageWallpaperType || 'off'
+  return t(`settings.video_page_wallpaper_type_desc.${type}`)
+})
+
+const isMaskEnabled = computed(() => {
+  if (isGlobal.value)
+    return settings.value.enableWallpaperMasking
+  if (isSearchPage.value)
+    return settings.value.searchPageEnableWallpaperMasking
+  if (isMomentsPage.value)
+    return settings.value.momentsPageEnableWallpaperMasking
+  return settings.value.videoPageEnableWallpaperMasking
+})
 
 const wallpaperLayoutOptions = computed<{ label: string, value: WallpaperLayout }[]>(() => [
   { label: t('settings.wallpaper_layout_opt.cover'), value: 'cover' },
@@ -72,7 +98,9 @@ const currentWallpaperLayout = computed<WallpaperLayout>({
       return normalizeWallpaperLayout(settings.value.wallpaperLayout)
     if (isSearchPage.value)
       return normalizeWallpaperLayout(settings.value.searchPageWallpaperLayout)
-    return normalizeWallpaperLayout(settings.value.momentsPageWallpaperLayout)
+    if (isMomentsPage.value)
+      return normalizeWallpaperLayout(settings.value.momentsPageWallpaperLayout)
+    return normalizeWallpaperLayout(settings.value.videoPageWallpaperLayout)
   },
   set: (val: WallpaperLayout) => {
     const layout = normalizeWallpaperLayout(val)
@@ -80,8 +108,10 @@ const currentWallpaperLayout = computed<WallpaperLayout>({
       settings.value.wallpaperLayout = layout
     else if (isSearchPage.value)
       settings.value.searchPageWallpaperLayout = layout
-    else
+    else if (isMomentsPage.value)
       settings.value.momentsPageWallpaperLayout = layout
+    else
+      settings.value.videoPageWallpaperLayout = layout
   },
 })
 
@@ -108,7 +138,9 @@ function getCurrentWallpaperUrl(): string {
     return settings.value.wallpaper
   if (isSearchPage.value)
     return settings.value.searchPageWallpaper
-  return settings.value.momentsPageWallpaper
+  if (isMomentsPage.value)
+    return settings.value.momentsPageWallpaper
+  return settings.value.videoPageWallpaper
 }
 
 // 检查是否为本地壁纸URL
@@ -127,10 +159,15 @@ function changeWallpaperType(type: 'buildIn' | 'byUrl') {
     if (type === 'byUrl' && (settings.value.searchPageWallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.searchPageWallpaper)))
       settings.value.searchPageWallpaper = ''
   }
-  else {
+  else if (isMomentsPage.value) {
     settings.value.momentsPageWallpaperMode = type
     if (type === 'byUrl' && (settings.value.momentsPageWallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.momentsPageWallpaper)))
       settings.value.momentsPageWallpaper = ''
+  }
+  else {
+    settings.value.videoPageWallpaperMode = type
+    if (type === 'byUrl' && (settings.value.videoPageWallpaper.startsWith('data:image/') || isLocalWallpaper(settings.value.videoPageWallpaper)))
+      settings.value.videoPageWallpaper = ''
   }
 }
 
@@ -146,8 +183,11 @@ function changeWallpaper(url: string) {
   else if (isSearchPage.value) {
     settings.value.searchPageWallpaper = url
   }
-  else {
+  else if (isMomentsPage.value) {
     settings.value.momentsPageWallpaper = url
+  }
+  else {
+    settings.value.videoPageWallpaper = url
   }
 }
 
@@ -261,6 +301,18 @@ onMounted(() => {
       <Radio v-model="settings.individuallySetMomentsPageWallpaper" />
     </SettingsItem>
 
+    <SettingsItem v-else-if="isVideoPage" :title="$t('settings.video_page_wallpaper_type')" right-width="auto">
+      <template #desc>
+        {{ videoPageWallpaperTypeDesc }}
+      </template>
+
+      <Select
+        v-model="settings.videoPageWallpaperType"
+        :options="videoPageWallpaperTypeOptions"
+        w="160px"
+      />
+    </SettingsItem>
+
     <template v-if="isGlobal || isIndividuallySet">
       <SettingsItem :title="$t('settings.wallpaper_mode')" :desc="$t('settings.wallpaper_mode_desc')" right-width="auto">
         <SettingsSegmentedControl
@@ -302,8 +354,21 @@ onMounted(() => {
           </template>
         </Input>
         <Input
-          v-else
+          v-else-if="isMomentsPage"
           v-model="settings.momentsPageWallpaperCacheTime"
+          type="number"
+          :min="0"
+          :max="168"
+          placeholder="0"
+          w-100px
+        >
+          <template #suffix>
+            <span text="sm $bew-text-2">h</span>
+          </template>
+        </Input>
+        <Input
+          v-else
+          v-model="settings.videoPageWallpaperCacheTime"
           type="number"
           :min="0"
           :max="168"
@@ -424,7 +489,8 @@ onMounted(() => {
             <div>
               <Input v-if="isGlobal" v-model="settings.wallpaper" w-full />
               <Input v-else-if="isSearchPage" v-model="settings.searchPageWallpaper" w-full />
-              <Input v-else v-model="settings.momentsPageWallpaper" w-full />
+              <Input v-else-if="isMomentsPage" v-model="settings.momentsPageWallpaper" w-full />
+              <Input v-else v-model="settings.videoPageWallpaper" w-full />
               <p color="sm $bew-text-3" mt-2>
                 {{ $t('settings.image_url_hint') }}
               </p>
@@ -452,28 +518,31 @@ onMounted(() => {
 
         <Radio v-if="isGlobal" v-model="settings.enableWallpaperMasking" />
         <Radio v-else-if="isSearchPage" v-model="settings.searchPageEnableWallpaperMasking" />
-        <Radio v-else v-model="settings.momentsPageEnableWallpaperMasking" />
+        <Radio v-else-if="isMomentsPage" v-model="settings.momentsPageEnableWallpaperMasking" />
+        <Radio v-else v-model="settings.videoPageEnableWallpaperMasking" />
       </SettingsItem>
       <SettingsItem
-        v-if="isGlobal ? settings.enableWallpaperMasking : (isSearchPage ? settings.searchPageEnableWallpaperMasking : settings.momentsPageEnableWallpaperMasking)"
+        v-if="isMaskEnabled"
         :title="$t('settings.wallpaper_mask_opacity')"
         right-width="auto"
       >
         <div class="slider-control">
           <Slider v-if="isGlobal" v-model="settings.wallpaperMaskOpacity" :label="`${settings.wallpaperMaskOpacity}%`" />
           <Slider v-else-if="isSearchPage" v-model="settings.searchPageWallpaperMaskOpacity" :label="`${settings.searchPageWallpaperMaskOpacity}%`" />
-          <Slider v-else v-model="settings.momentsPageWallpaperMaskOpacity" :label="`${settings.momentsPageWallpaperMaskOpacity}%`" />
+          <Slider v-else-if="isMomentsPage" v-model="settings.momentsPageWallpaperMaskOpacity" :label="`${settings.momentsPageWallpaperMaskOpacity}%`" />
+          <Slider v-else v-model="settings.videoPageWallpaperMaskOpacity" :label="`${settings.videoPageWallpaperMaskOpacity}%`" />
         </div>
       </SettingsItem>
       <SettingsItem
-        v-if="isGlobal ? settings.enableWallpaperMasking : (isSearchPage ? settings.searchPageEnableWallpaperMasking : settings.momentsPageEnableWallpaperMasking)"
+        v-if="isMaskEnabled"
         :title="$t('settings.wallpaper_blur_intensity')"
         right-width="auto"
       >
         <div class="slider-control">
           <Slider v-if="isGlobal" v-model="settings.wallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.wallpaperBlurIntensity}px`" />
           <Slider v-else-if="isSearchPage" v-model="settings.searchPageWallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.searchPageWallpaperBlurIntensity}px`" />
-          <Slider v-else v-model="settings.momentsPageWallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.momentsPageWallpaperBlurIntensity}px`" />
+          <Slider v-else-if="isMomentsPage" v-model="settings.momentsPageWallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.momentsPageWallpaperBlurIntensity}px`" />
+          <Slider v-else v-model="settings.videoPageWallpaperBlurIntensity" :min="0" :max="60" :label="`${settings.videoPageWallpaperBlurIntensity}px`" />
         </div>
       </SettingsItem>
     </template>

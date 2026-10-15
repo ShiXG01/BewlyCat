@@ -546,6 +546,21 @@ export const settingsSearchEntries: SettingsSearchEntry[] = [
     'settings.video_danmaku_default_state',
     'settings.video_caption_default_state',
   ], { keywordKeys: ['settings.video_default_state_opt'] }),
+  ...createEntries(playerRoute, [
+    'settings.video_page_wallpaper_type',
+  ], {
+    keywordKeys: [
+      'settings.video_page_wallpaper_type_opt.off',
+      'settings.video_page_wallpaper_type_opt.follow',
+      'settings.video_page_wallpaper_type_opt.individual',
+      'settings.wallpaper_mode',
+      'settings.wallpaper_layout',
+      'settings.enable_wallpaper_masking',
+      'settings.wallpaper_mask_opacity',
+      'settings.wallpaper_blur_intensity',
+      'settings.wallpaper_cache_time',
+    ],
+  }),
 
   ...createEntries(autoPlayRoute, [
     'settings.bilibili_features.auto_play',

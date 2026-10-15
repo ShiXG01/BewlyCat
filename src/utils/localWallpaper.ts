@@ -25,8 +25,21 @@ export interface LocalWallpaperRef {
   isLocal: true
 }
 
+let resolveLocalWallpapersReady: (value: Record<string, LocalWallpaperData>) => void
+export const localWallpapersReady = new Promise<Record<string, LocalWallpaperData>>((resolve) => {
+  resolveLocalWallpapersReady = resolve
+})
+
 // 本地壁纸存储
-const localWallpapers = useStorageLocal<Record<string, LocalWallpaperData>>('localWallpapers', {})
+export const localWallpapers = useStorageLocal<Record<string, LocalWallpaperData>>(
+  'localWallpapers',
+  {},
+  {
+    onReady: (val) => {
+      resolveLocalWallpapersReady(val || {})
+    },
+  },
+)
 
 /**
  * 生成本地壁纸的唯一标识符
@@ -167,7 +180,7 @@ export function extractWallpaperId(url: string): string | null {
   return null
 }
 
-export type WallpaperPageType = 'global' | 'searchPage' | 'momentsPage'
+export type WallpaperPageType = 'global' | 'searchPage' | 'momentsPage' | 'videoPage'
 
 /**
  * 获取指定 ID 的本地壁纸元数据
@@ -217,6 +230,22 @@ export function getLocalUploadedWallpaperRef(type: WallpaperPageType): wallpaper
     }
     return null
   }
+  if (type === 'videoPage') {
+    if (localSettings.value.videoPageLocallyUploadedWallpaper)
+      return localSettings.value.videoPageLocallyUploadedWallpaper
+
+    const id = extractWallpaperId(settings.value.videoPageWallpaper)
+    if (id && hasLocalWallpaper(id)) {
+      const data = getLocalWallpaperData(id)
+      return {
+        id,
+        name: data?.name || '',
+        url: `local-wallpaper:${id}`,
+        isLocal: true,
+      }
+    }
+    return null
+  }
   return null
 }
 
@@ -232,6 +261,9 @@ export function setLocalUploadedWallpaperRef(type: WallpaperPageType, item: wall
   }
   else if (type === 'momentsPage') {
     localSettings.value.momentsPageLocallyUploadedWallpaper = item
+  }
+  else if (type === 'videoPage') {
+    localSettings.value.videoPageLocallyUploadedWallpaper = item
   }
 }
 
@@ -263,6 +295,14 @@ export function isWallpaperIdInUse(id: string, excludeType?: WallpaperPageType):
     if (extractWallpaperId(settings.value.momentsPageWallpaper) === id)
       return true
     if (localSettings.value.momentsPageLocallyUploadedWallpaper?.id === id)
+      return true
+  }
+
+  // 检查视频播放页
+  if (excludeType !== 'videoPage') {
+    if (extractWallpaperId(settings.value.videoPageWallpaper) === id)
+      return true
+    if (localSettings.value.videoPageLocallyUploadedWallpaper?.id === id)
       return true
   }
 

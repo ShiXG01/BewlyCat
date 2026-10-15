@@ -758,6 +758,15 @@ settings:
   search_results_pagination_mode_desc: 'Choose how search results are displayed: infinite scroll or page-based navigation'
   individually_set_search_page_wallpaper: Individually set search page wallpaper
   individually_set_moments_page_wallpaper: Individually set moments page wallpaper
+  video_page_wallpaper_type: Video playback page wallpaper mode
+  video_page_wallpaper_type_opt:
+    off: Off
+    follow: Follow global
+    individual: Individual settings
+  video_page_wallpaper_type_desc:
+    off: Video page wallpaper is disabled by default, keeping the original Bilibili background.
+    follow: Inherit global wallpaper settings (including image, five layouts, mask, blur, and cache).
+    individual: Independently configure wallpaper, layout, mask, and blur for normal video pages.
   recommendation_mode: Recommendation mode
   recommendation_mode_desc: >
     Web: normal web recommendation mode. No Cookie: request homepage

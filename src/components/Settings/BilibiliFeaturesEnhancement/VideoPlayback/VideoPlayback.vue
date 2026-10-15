@@ -6,6 +6,7 @@ import Select from '~/components/Select.vue'
 import { settings } from '~/logic'
 import type { PlayerDefaultState, VideoPlayerModeContext, VideoPlayerScrollMode } from '~/logic/storage'
 
+import ChangeWallpaper from '../../components/ChangeWallpaper.vue'
 import SettingsItem from '../../components/SettingsItem.vue'
 import SettingsItemGroup from '../../components/SettingsItemGroup.vue'
 import SettingsItemSubgroup from '../../components/SettingsItemSubgroup.vue'
@@ -378,6 +379,7 @@ const playerDefaultStateOptions = computed<{ label: string, value: PlayerDefault
       </SettingsItemSubgroup>
     </SettingsItemGroup>
     <VolumeBalance />
+    <ChangeWallpaper type="videoPage" />
   </div>
 </template>
 

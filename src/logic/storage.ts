@@ -186,6 +186,7 @@ export interface LocalSettings {
   locallyUploadedWallpaper: wallpaperItem | null
   searchPageLocallyUploadedWallpaper: wallpaperItem | null
   momentsPageLocallyUploadedWallpaper: wallpaperItem | null
+  videoPageLocallyUploadedWallpaper: wallpaperItem | null
 
   // 自定义CSS
   customizeCSS: boolean
@@ -483,6 +484,15 @@ export interface Settings {
   momentsPageWallpaperBlurIntensity: number
   momentsPageWallpaperCacheTime: number // URL壁纸缓存时间(小时), 0表示不缓存
 
+  videoPageWallpaperType: 'off' | 'follow' | 'individual'
+  videoPageWallpaperMode: 'buildIn' | 'byUrl'
+  videoPageWallpaper: string
+  videoPageWallpaperLayout: WallpaperLayout
+  videoPageEnableWallpaperMasking: boolean
+  videoPageWallpaperMaskOpacity: number
+  videoPageWallpaperBlurIntensity: number
+  videoPageWallpaperCacheTime: number // URL壁纸缓存时间(小时), 0表示不缓存
+
   // 热搜功能设置（统一在搜索框聚焦时显示）
   showHotSearchInTopBar: boolean
 
@@ -621,6 +631,7 @@ export const originalLocalSettings: LocalSettings = {
   locallyUploadedWallpaper: null,
   searchPageLocallyUploadedWallpaper: null,
   momentsPageLocallyUploadedWallpaper: null,
+  videoPageLocallyUploadedWallpaper: null,
   customizeCSS: false,
   customizeCSSContent: '',
   bewlyWidescreenSidebarWidth: 0,
@@ -828,6 +839,15 @@ export const originalSettings: Settings = {
   momentsPageWallpaperMaskOpacity: 80,
   momentsPageWallpaperBlurIntensity: 0,
   momentsPageWallpaperCacheTime: 0,
+
+  videoPageWallpaperType: 'off',
+  videoPageWallpaperMode: 'buildIn',
+  videoPageWallpaper: '',
+  videoPageWallpaperLayout: 'cover',
+  videoPageEnableWallpaperMasking: true, // 初始化独立遮罩建议开启
+  videoPageWallpaperMaskOpacity: 80,
+  videoPageWallpaperBlurIntensity: 0,
+  videoPageWallpaperCacheTime: 0,
 
   // 热搜功能设置（统一在搜索框聚焦时显示）
   showHotSearchInTopBar: true,

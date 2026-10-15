@@ -673,6 +673,15 @@ settings:
   depersonalize_search_results_desc: 啟用後，搜尋結果請求不攜帶登入 Cookie。
   individually_set_search_page_wallpaper: 單獨設定搜尋頁背景
   individually_set_moments_page_wallpaper: 單獨設定動態頁壁紙
+  video_page_wallpaper_type: 影片播放頁背景模式
+  video_page_wallpaper_type_opt:
+    off: 關閉
+    follow: 跟隨全域
+    individual: 獨立設定
+  video_page_wallpaper_type_desc:
+    off: 預設關閉影片播放頁背景，保留 B 站原生播放頁背景。
+    follow: 跟隨全域背景設定（包括圖片、五種版面配置、遮罩、模糊及快取設定）。
+    individual: 為普通影片播放頁單獨設定背景、版面配置、遮罩與模糊。
   recommendation_mode: 推薦模式
   recommendation_mode_desc: |
     Web：普通網頁端推薦模式。無 Cookie：請求首頁推薦時不攜帶 Cookie。App：手機端推薦模式，需先授權 access key。

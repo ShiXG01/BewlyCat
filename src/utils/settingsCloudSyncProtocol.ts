@@ -71,11 +71,20 @@ const LOCAL_ONLY_WALLPAPER_FIELDS = new Set([
   'momentsPageWallpaperMaskOpacity',
   'momentsPageWallpaperBlurIntensity',
   'momentsPageWallpaperCacheTime',
+  'videoPageWallpaperType',
+  'videoPageWallpaperMode',
+  'videoPageWallpaper',
+  'videoPageWallpaperLayout',
+  'videoPageEnableWallpaperMasking',
+  'videoPageWallpaperMaskOpacity',
+  'videoPageWallpaperBlurIntensity',
+  'videoPageWallpaperCacheTime',
   // Legacy fields are denied as a final guard if an old settings object has
   // not completed its local-only migration yet.
   'locallyUploadedWallpaper',
   'searchPageLocallyUploadedWallpaper',
   'momentsPageLocallyUploadedWallpaper',
+  'videoPageLocallyUploadedWallpaper',
   'customizeCSS',
   'customizeCSSContent',
 ])

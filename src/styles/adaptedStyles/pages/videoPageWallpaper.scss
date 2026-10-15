@@ -1,0 +1,133 @@
+#bewly-video-wallpaper-root {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  // 负层级仅在下方 body 的隔离上下文内置底，不能落到页面画布后方。
+  z-index: -1;
+  background-color: var(--bew-bg, var(--bg1, #fff));
+  overflow: hidden;
+  display: block;
+
+  .bewly-video-wallpaper-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    transition: filter var(--bew-duration-normal, 200ms) var(--bew-ease-standard, ease);
+  }
+
+  .bewly-video-wallpaper-mask {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    transition: background-color var(--bew-duration-normal, 200ms) var(--bew-ease-standard, ease);
+  }
+}
+
+// 播放器网页全屏、全屏时隐藏背景节点，保证黑边、视频、控件完全不受影响
+:fullscreen #bewly-video-wallpaper-root,
+html:has(.bpx-player-container:is([data-screen="web"], [data-screen="full"])) #bewly-video-wallpaper-root,
+body:has(.bpx-player-container:is([data-screen="web"], [data-screen="full"])) #bewly-video-wallpaper-root,
+body.player-mode-webfullscreen #bewly-video-wallpaper-root,
+body.player-mode-fullscreen #bewly-video-wallpaper-root,
+.bpx-state-web-fullscreen #bewly-video-wallpaper-root,
+.bpx-state-fullscreen #bewly-video-wallpaper-root {
+  display: none !important;
+}
+
+html.bewly-video-page-wallpaper {
+  > body {
+    // 创建独立层叠上下文：先绘制 body 底色，再绘制负层级壁纸和原站内容。
+    // 不改变定位、z-index 或固定定位的包含块，避免干扰播放器和弹窗。
+    isolation: isolate;
+  }
+
+  // 仅清除内容外层挡图底色，保留 html/body 的原有主题背景和画布回退。
+  #app,
+  #mirror-vdcon,
+  .video-container-v1,
+  .left-container,
+  .right-container {
+    background: transparent !important;
+  }
+
+  // 为标题、简介、工具栏、评论、推荐列表等保留可读底板
+  .video-info-container,
+  .video-info-v1,
+  .video-desc-container,
+  .video-desc-v1,
+  .video-toolbar-container,
+  .comment-container,
+  #comment,
+  .bili-comment,
+  .recommend-list-v1,
+  #recom_read,
+  .up-panel-container,
+  .video-pod {
+    background-color: var(--bew-content-solid, #fff);
+    border-radius: var(--bew-card-radius, 12px);
+    transition: background-color var(--bew-duration-normal, 200ms) var(--bew-ease-standard, ease);
+  }
+
+  .video-info-container,
+  .video-info-v1 {
+    padding: var(--bew-space-3, 12px) var(--bew-space-4, 16px);
+    margin-bottom: var(--bew-space-3, 12px);
+  }
+
+  .video-desc-container,
+  .video-desc-v1 {
+    padding: var(--bew-space-3, 12px) var(--bew-space-4, 16px);
+    margin-top: var(--bew-space-2, 8px);
+    margin-bottom: var(--bew-space-3, 12px);
+  }
+
+  .video-toolbar-container {
+    padding: var(--bew-space-2, 8px) var(--bew-space-4, 16px);
+    margin-bottom: var(--bew-space-3, 12px);
+  }
+
+  .comment-container,
+  #comment {
+    padding: var(--bew-space-4, 16px);
+    margin-top: var(--bew-space-3, 12px);
+  }
+
+  .recommend-list-v1,
+  #recom_read {
+    padding: var(--bew-space-3, 12px);
+    margin-bottom: var(--bew-space-3, 12px);
+  }
+
+  .up-panel-container {
+    padding: var(--bew-space-3, 12px) var(--bew-space-4, 16px);
+    margin-bottom: var(--bew-space-3, 12px);
+  }
+
+  // 暗色模式底板
+  &.dark,
+  &.bili_dark {
+    .video-info-container,
+    .video-info-v1,
+    .video-desc-container,
+    .video-desc-v1,
+    .video-toolbar-container,
+    .comment-container,
+    #comment,
+    .bili-comment,
+    .recommend-list-v1,
+    #recom_read,
+    .up-panel-container,
+    .video-pod {
+      background-color: var(--bew-content-solid, #18191c);
+    }
+  }
+}

@@ -47,6 +47,7 @@ import { setupNativeHomeFeedHistory } from './features/nativeHomeFeedHistory'
 import { setupNotificationStateInvalidation } from './features/notificationStateInvalidation'
 import { setupOpusDetailDrawerLayout } from './features/opusDetailDrawerLayout'
 import { setupOriginalMomentsFilter } from './features/originalMomentsFilter'
+import { setupVideoPageWallpaper } from './features/videoPageWallpaper'
 import { setupVideoWatchProgress } from './features/videoWatchProgress'
 import { setupWatchLaterAutoRemove } from './features/watchLaterAutoRemove'
 import { initListenVideoFeature } from './listenVideoFeature'
@@ -261,6 +262,7 @@ else if (shouldInitializeContentScript) {
   setupWatchLaterAutoRemove()
   setupFavoriteOrganizerTripleSync()
   setupVideoWatchProgress()
+  const disposeVideoPageWallpaper = setupVideoPageWallpaper()
   // Fix `OverlayScrollbars` not working in Firefox
   // https://github.com/fingerprintjs/fingerprintjs/issues/683#issuecomment-881210244
   if (isFirefox) {
@@ -1555,6 +1557,7 @@ else if (shouldInitializeContentScript) {
       if (appDisposed)
         return
       appDisposed = true
+      disposeVideoPageWallpaper()
       app.unmount()
       delete container.__bewlyCatDisposeApp__
     }
@@ -1772,6 +1775,7 @@ else if (shouldInitializeContentScript) {
       { getUrl: () => settings.value.wallpaper, setUrl: url => settings.value.wallpaper = url },
       { getUrl: () => settings.value.searchPageWallpaper, setUrl: url => settings.value.searchPageWallpaper = url },
       { getUrl: () => settings.value.momentsPageWallpaper, setUrl: url => settings.value.momentsPageWallpaper = url },
+      { getUrl: () => settings.value.videoPageWallpaper, setUrl: url => settings.value.videoPageWallpaper = url },
     ]
 
     wallpaperPages.forEach(({ getUrl, setUrl }) => {
@@ -1789,6 +1793,7 @@ else if (shouldInitializeContentScript) {
       { getRef: () => localSettings.value.locallyUploadedWallpaper, setRef: () => localSettings.value.locallyUploadedWallpaper = null },
       { getRef: () => localSettings.value.searchPageLocallyUploadedWallpaper, setRef: () => localSettings.value.searchPageLocallyUploadedWallpaper = null },
       { getRef: () => localSettings.value.momentsPageLocallyUploadedWallpaper, setRef: () => localSettings.value.momentsPageLocallyUploadedWallpaper = null },
+      { getRef: () => localSettings.value.videoPageLocallyUploadedWallpaper, setRef: () => localSettings.value.videoPageLocallyUploadedWallpaper = null },
     ]
 
     uploadedRefs.forEach(({ getRef, setRef }) => {
