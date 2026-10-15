@@ -3,8 +3,8 @@ import 'uno.css'
 
 import { createApp } from 'vue'
 
-import { useDark } from '~/composables/useDark'
-import { CONTENT_SCRIPT_COMMIT, CONTENT_SCRIPT_PING, CONTENT_SCRIPT_PONG } from '~/constants/contentScript'
+import { startIframeThemeListener, useDark } from '~/composables/useDark'
+import { CONTENT_SCRIPT_COMMIT, CONTENT_SCRIPT_PING, CONTENT_SCRIPT_PONG, PAGE_STYLE_GATE_ATTRIBUTE } from '~/constants/contentScript'
 import { BEWLY_IFRAME_DRAWER_HOST_CLASS, BEWLY_MOUNTED, IFRAME_DARK_MODE_CHANGE, IFRAME_TOP_BAR_CHANGE } from '~/constants/globalEvents'
 import type { wallpaperItem } from '~/constants/imgs'
 import { localSettings, settings, settingsReady } from '~/logic'
@@ -13,6 +13,8 @@ import { useTopBarStore } from '~/stores/topBarStore'
 import RESET_BEWLY_CSS from '~/styles/reset.css?raw'
 import api from '~/utils/api'
 import { applyBewlyWidescreen, BEWLY_WIDESCREEN_USER_EXIT, exitBewlyWidescreen, isBewlyWidescreenActive, isBewlyWidescreenEngaged, prepareBewlyWidescreenLoading } from '~/utils/bewlyWidescreen'
+import { isBilibiliWwwUrl } from '~/utils/bilibiliDesktopNavigation'
+import { isInBilibiliLiveContext } from '~/utils/bilibiliLive'
 import { stripBilibiliLocaleUrl } from '~/utils/bilibiliLocale'
 import { cleanupBilibiliScripts } from '~/utils/bilibiliScriptCleanup'
 import { captureOriginalBilibiliTopBar, ensureOriginalBilibiliTopBarAppended, resetBilibiliTopBarInlineStyles, shouldShowOriginalBilibiliTopBar } from '~/utils/bilibiliTopBar'
@@ -23,7 +25,7 @@ import { runWhenIdle } from '~/utils/lazyLoad'
 import { extractWallpaperId, getAllLocalWallpapers, hasLocalWallpaper, isLocalWallpaperUrl } from '~/utils/localWallpaper'
 import { getCookie, injectCSS, isElectron, isHomePage, isInIframe, isNotificationPage, isVideoOrBangumiPage, isVideoPlaybackPage, isWatchLaterListPage } from '~/utils/main'
 import { initNativeFavoriteSeasonPlayAllIntercept } from '~/utils/nativeFavoriteSeasonPlayAll'
-import { createPageSettingsPayload } from '~/utils/pageSettingsProtocol'
+import { createPageSettingsPayload, writePageBootSnapshot } from '~/utils/pageSettingsProtocol'
 import { isPhotoViewerOpen } from '~/utils/photoViewer'
 import { applyAutoPlayByVideoType, applyDefaultCaptionState, applyDefaultDanmakuState, applyRememberedPlaybackRate, defaultMode, getVideoElement, handleVideoPageNavigation, isPlayerDisplayModeReady, isPlayerShowingEndingRecommendation, isVideoPage, resetAutoPlayUserChangeFlag, resolveDefaultVideoPlayerMode, startAutoExitFullscreenMonitoring, startAutoPlayUserChangeMonitoring, startPlaybackRateMonitoring, webFullscreen, widescreen } from '~/utils/player'
 import { applyPreservedOrDefaultCustomPlay, applyRandomPlayActivationSettings, destroyRandomPlay, initRandomPlay, isCustomPlayPage, resetRandomPlayInitialization, syncRandomPlayOrder, syncRandomPlayUI } from '~/utils/randomPlay'
@@ -33,6 +35,7 @@ import { setupShortcutHandlers } from '~/utils/shortcuts'
 import { SVG_ICONS } from '~/utils/svgIcons'
 import { openLinkInBackground } from '~/utils/tabs'
 import { initVerticalVideoZoom, resetVerticalVideoZoom } from '~/utils/verticalVideoZoom'
+import { loadCurrentVideoPageInfo } from '~/utils/videoPageInfo'
 import { recordVideoVisitFromUrl } from '~/utils/videoVisitHistory'
 import { ensureResponsiveViewport } from '~/utils/viewportMeta'
 
@@ -70,13 +73,29 @@ const contentScriptGlobal = globalThis as typeof globalThis & {
   __BEWLYCAT_CONTENT_SCRIPT_INITIALIZED__?: boolean
   __BEWLYCAT_PAGE_LOADING__?: PageLoadingGuard
 }
+// 直播站及其内嵌框架中不执行任何页面处理。
 const shouldInitializeContentScript = !contentScriptGlobal.__BEWLYCAT_CONTENT_SCRIPT_INITIALIZED__
+  && !isInBilibiliLiveContext()
 const bundledShadowStyleText = contentScriptGlobal.__BEWLYCAT_BUNDLED_STYLE_TEXT__
 const contentScriptManifest = browser.runtime.getManifest()
 const contentScriptRuntimeUrl = browser.runtime.getURL('')
 
 if (shouldInitializeContentScript) {
   contentScriptGlobal.__BEWLYCAT_CONTENT_SCRIPT_INITIALIZED__ = true
+  // 打开页面级样式的门槛；未运行 content script 的框架不应用任何 BewlyCat 样式。
+  // document_start 时根元素偶尔尚未创建，等它出现后再设置。
+  if (document.documentElement) {
+    document.documentElement.setAttribute(PAGE_STYLE_GATE_ATTRIBUTE, '')
+  }
+  else {
+    const rootObserver = new MutationObserver(() => {
+      if (!document.documentElement)
+        return
+      document.documentElement.setAttribute(PAGE_STYLE_GATE_ATTRIBUTE, '')
+      rootObserver.disconnect()
+    })
+    rootObserver.observe(document, { childList: true })
+  }
   browser.runtime.onMessage.addListener((message: unknown) => {
     if (typeof message === 'object' && message !== null && 'type' in message && message.type === CONTENT_SCRIPT_PING) {
       const expected = 'expectedIdentity' in message ? message.expectedIdentity : undefined
@@ -528,12 +547,18 @@ else if (shouldInitializeContentScript) {
       return
 
     playbackBehaviorScheduledForKey = navigationKey
+    // 结束行为按稿件分 P 数区分分 P 与合集，与等待播放器的时间并行请求。
+    const pageInfoRequest = loadCurrentVideoPageInfo()
     if (playbackBehaviorTimer)
       clearTimeout(playbackBehaviorTimer)
     playbackBehaviorTimer = setTimeout(() => {
       playbackBehaviorTimer = undefined
-      applyEndPlaybackBehavior()
-      startAutoExitFullscreenMonitoring()
+      void pageInfoRequest.then(() => {
+        if (playbackBehaviorScheduledForKey !== navigationKey)
+          return
+        applyEndPlaybackBehavior()
+        startAutoExitFullscreenMonitoring()
+      })
     }, 2000)
   }
 
@@ -1541,6 +1566,10 @@ else if (shouldInitializeContentScript) {
     if (!pageSettings)
       return
 
+    // 页面脚本下次在 document_start 据此决定是否安装 UA / 弹幕实验钩子。
+    if (isBilibiliWwwUrl(location.href))
+      writePageBootSnapshot(pageSettings)
+
     window.postMessage({
       type: 'BEWLY_SETTINGS_UPDATE',
       data: pageSettings,
@@ -1667,6 +1696,9 @@ else if (shouldInitializeContentScript) {
       })
     }
   })
+
+  // useDark() 要等设置加载后才执行，提前记录父页面主题，之后由它继承。
+  startIframeThemeListener()
 
   // 监听来自父页面的黑暗模式切换消息（用于iframe跨域场景）
   window.addEventListener('message', (event) => {
