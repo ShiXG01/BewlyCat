@@ -44,6 +44,11 @@ body.player-mode-fullscreen #bewly-video-wallpaper-root,
 }
 
 html.bewly-video-page-wallpaper {
+  // 新版评论内容在 Shadow DOM 中，只需给外层容器或 bili-comments 宿主加底板。
+  // 同时兼容旧版入口；嵌套时仅选择最外层，避免底色和内边距重复叠加。
+  $comment-roots: "#commentapp, #comment-module, #comment-body, .commentapp, .comment-container, .bili-comment-container, #comment, .bili-comment, .bb-comment, bili-comments";
+  $comment-surface: ":is(#{$comment-roots}):not(:is(#{$comment-roots}) *)";
+
   > body {
     // 创建独立层叠上下文：先绘制 body 底色，再绘制负层级壁纸和原站内容。
     // 不改变定位、z-index 或固定定位的包含块，避免干扰播放器和弹窗。
@@ -66,9 +71,7 @@ html.bewly-video-page-wallpaper {
   .video-desc-container,
   .video-desc-v1,
   .video-toolbar-container,
-  .comment-container,
-  #comment,
-  .bili-comment,
+  #{$comment-surface},
   .recommend-list-v1,
   #recom_read,
   .up-panel-container,
@@ -96,8 +99,9 @@ html.bewly-video-page-wallpaper {
     margin-bottom: var(--bew-space-3, 12px);
   }
 
-  .comment-container,
-  #comment {
+  #{$comment-surface} {
+    display: block;
+    box-sizing: border-box;
     padding: var(--bew-space-4, 16px);
     margin-top: var(--bew-space-3, 12px);
   }
